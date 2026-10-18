@@ -856,7 +856,7 @@ async function saveGIF() {
     // timeline: type, settle, hold, fade
     const n = L0.length, step = clamp(1400 / n, 70, 150), start = 300;
     const V = L0.map((l, k) => Object.assign({}, l, { birth: start + k * step, dead: null }));
-    const lastBirth = start + (n - 1) * step, typed = lastBirth + 350;
+    const lastBirth = start + (n - 1) * step;
     const hold = lastBirth + SETTLE[f.id] + 2200, T = hold + 400, FPS = 20, N = Math.ceil(T / 1000 * FPS);
     const at = l => [l.tx, l.ty];
     const frames = [];
@@ -867,10 +867,6 @@ async function saveGIF() {
       x.setTransform(sc, 0, 0, sc, -x0 * sc, -y0 * sc);
       const born = V.filter(l => l.birth <= t), lk = born.length ? born[born.length - 1].birth : -1e9;
       scene(x, sc, t, V, S, lk, false, at);
-      if (t < typed) {                                       // the typing cursor follows the newest letter
-        const last = born[born.length - 1], cxp = last ? last.tx + last.tw / 2 + 0.06 * S : V[0].tx - V[0].tw / 2, ch = 0.82 * S;
-        if (Math.floor(t / 260) % 2 === 0 || t - lk < 300) { x.fillStyle = P.ui; x.fillRect(cxp - Math.max(2 / sc, S * 0.016), V[0].ty - 0.35 * S - ch / 2, Math.max(4 / sc, S * 0.032), ch); }
-      }
       if (t > hold) { x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = eo((t - hold) / 400); x.fillStyle = P.bg; x.fillRect(0, 0, gw, gh); }
       frames.push(x.getImageData(0, 0, gw, gh).data);
       if (i % 4 === 0) { label.textContent = `${Math.round(i / N * 60)}%`; await new Promise(r => setTimeout(r, 0)); }
