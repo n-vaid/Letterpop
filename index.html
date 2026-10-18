@@ -55,27 +55,35 @@ body{font-family:"IBM Plex Mono",ui-monospace,monospace;color:var(--ink);-webkit
 .tile canvas{display:block;width:100%;height:100%;pointer-events:none}
 .tile:hover{border-color:var(--line)}
 .tile.on{border-color:var(--ink)}
-.sw{flex:none;width:26px;height:26px;padding:4px;border:0;border-radius:50%;background:transparent;cursor:pointer;box-shadow:inset 0 0 0 1.5px transparent;transition:box-shadow .2s}
-.sw span{display:block;width:100%;height:100%;border-radius:50%;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(0,0,0,.14);transition:transform .2s}
+.sw{flex:none;width:26px;height:26px;min-width:0;min-height:0;padding:4px;margin:0;border:0;border-radius:50%;background:transparent;-webkit-appearance:none;appearance:none;cursor:pointer;box-shadow:inset 0 0 0 1.5px transparent;transition:box-shadow .2s}
+.sw span{display:block;width:100%;height:100%;flex:none;border-radius:50%;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(0,0,0,.14);transition:transform .2s}
 .sw:hover span{transform:scale(1.1)}
 .sw.on{box-shadow:inset 0 0 0 1.5px var(--ink)}
 .sep{flex:none;width:1px;height:20px;background:var(--line)}
-#save{flex:none;display:flex;align-items:center;gap:6px;height:34px;padding:0 13px 0 11px;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--ink);font:500 11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.06em;cursor:pointer;transition:border-color .2s}
-#save:hover{border-color:var(--ink)}
-#save svg{width:16px;height:16px}
+#saves{gap:2px}
+.savebtn{flex:none;display:flex;align-items:center;gap:6px;height:34px;padding:0 13px 0 11px;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--ink);font:500 11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.06em;cursor:pointer;transition:border-color .2s}
+.savebtn:hover{border-color:var(--ink)}
+.savebtn svg{width:16px;height:16px}
+.savebtn span{min-width:3ch}
 button:focus-visible{outline:1.5px solid var(--ink);outline-offset:2px}
 #kb{position:fixed;left:0;top:0;width:1px;height:1px;margin:0;padding:0;border:0;opacity:0;font-size:16px;color:transparent;background:transparent;caret-color:transparent;pointer-events:none}
 
 /* phones and narrow windows: two rows that always fit — styles on top, colours and save below */
-@media (max-width:720px){
+@media (max-width:780px){
   #top{font-size:10.5px;letter-spacing:.03em}
   #dock{left:12px;right:12px;transform:none;bottom:calc(12px + env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr auto;grid-template-areas:"f f" "s v";row-gap:6px;column-gap:6px;padding:6px;border-radius:22px}
   .sep{display:none}
   #filters{grid-area:f;gap:2px}
   .tile{flex:1 1 0;min-width:0;width:auto;height:40px}
   #swatches{grid-area:s;justify-content:space-between;gap:0}
-  .sw{flex:1 1 0;width:auto;height:auto;max-width:32px;aspect-ratio:1;padding:3px}
-  #save{grid-area:v;height:32px;padding:0 10px;border-color:var(--line)}
+  .sw{--d:min(34px, calc((100vw - 214px) / 9));width:var(--d);height:var(--d);padding:3px}
+  #saves{grid-area:v;gap:4px}
+  .savebtn{height:32px;padding:0 10px;border-color:var(--line)}
+}
+@media (max-width:440px){
+  #dock{grid-template-columns:1fr;grid-template-areas:"f" "s" "v"}
+  .sw{--d:min(36px, calc((100vw - 40px) / 9))}
+  #saves .savebtn{flex:1 1 0;justify-content:center}
 }
 </style>
 </head>
@@ -93,11 +101,18 @@ button:focus-visible{outline:1.5px solid var(--ink);outline-offset:2px}
   <div class="sep"></div>
   <div class="group" id="swatches" role="radiogroup" aria-label="Colors"></div>
   <div class="sep"></div>
-  <button id="save" title="Save PNG" aria-label="Save PNG"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>PNG</button>
+  <div class="group" id="saves">
+    <button class="savebtn" id="save" title="Save a still image" aria-label="Save PNG"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg><span>PNG</span></button>
+    <button class="savebtn" id="gif" title="Save the typing animation as a looping GIF" aria-label="Save GIF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg><span>GIF</span></button>
+  </div>
 </div>
 
 <script>
 'use strict';
+
+// ---------- GIF encoder: gifenc 1.0.3 by Matt DesLauriers (MIT License), inlined ----------
+(() => {var X={signature:"GIF",version:"89a",trailer:59,extensionIntroducer:33,applicationExtensionLabel:255,graphicControlExtensionLabel:249,imageSeparator:44,signatureSize:3,versionSize:3,globalColorTableFlagMask:128,colorResolutionMask:112,sortFlagMask:8,globalColorTableSizeMask:7,applicationIdentifierSize:8,applicationAuthCodeSize:3,disposalMethodMask:28,userInputFlagMask:2,transparentColorFlagMask:1,localColorTableFlagMask:128,interlaceFlagMask:64,idSortFlagMask:32,localColorTableSizeMask:7};function F(t=256){let e=0,s=new Uint8Array(t);return{get buffer(){return s.buffer},reset(){e=0},bytesView(){return s.subarray(0,e)},bytes(){return s.slice(0,e)},writeByte(r){n(e+1),s[e]=r,e++},writeBytes(r,o=0,i=r.length){n(e+i);for(let c=0;c<i;c++)s[e++]=r[c+o]},writeBytesView(r,o=0,i=r.byteLength){n(e+i),s.set(r.subarray(o,o+i),e),e+=i}};function n(r){var o=s.length;if(o>=r)return;var i=1024*1024;r=Math.max(r,o*(o<i?2:1.125)>>>0),o!=0&&(r=Math.max(r,256));let c=s;s=new Uint8Array(r),e>0&&s.set(c.subarray(0,e),0)}}var O=12,J=5003,lt=[0,1,3,7,15,31,63,127,255,511,1023,2047,4095,8191,16383,32767,65535];function at(t,e,s,n,r=F(512),o=new Uint8Array(256),i=new Int32Array(J),c=new Int32Array(J)){let x=i.length,a=Math.max(2,n);o.fill(0),c.fill(0),i.fill(-1);let l=0,f=0,g=a+1,h=g,b=!1,w=h,_=(1<<w)-1,u=1<<g-1,k=u+1,B=u+2,p=0,A=s[0],z=0;for(let y=x;y<65536;y*=2)++z;z=8-z,r.writeByte(a),I(u);let d=s.length;for(let y=1;y<d;y++){t:{let m=s[y],v=(m<<O)+A,M=m<<z^A;if(i[M]===v){A=c[M];break t}let V=M===0?1:x-M;for(;i[M]>=0;)if(M-=V,M<0&&(M+=x),i[M]===v){A=c[M];break t}I(A),A=m,B<1<<O?(c[M]=B++,i[M]=v):(i.fill(-1),B=u+2,b=!0,I(u))}}return I(A),I(k),r.writeByte(0),r.bytesView();function I(y){for(l&=lt[f],f>0?l|=y<<f:l=y,f+=w;f>=8;)o[p++]=l&255,p>=254&&(r.writeByte(p),r.writeBytesView(o,0,p),p=0),l>>=8,f-=8;if((B>_||b)&&(b?(w=h,_=(1<<w)-1,b=!1):(++w,_=w===O?1<<w:(1<<w)-1)),y==k){for(;f>0;)o[p++]=l&255,p>=254&&(r.writeByte(p),r.writeBytesView(o,0,p),p=0),l>>=8,f-=8;p>0&&(r.writeByte(p),r.writeBytesView(o,0,p),p=0)}}}var $=at;function D(t,e,s){return t<<8&63488|e<<2&992|s>>3}function G(t,e,s,n){return t>>4|e&240|(s&240)<<4|(n&240)<<8}function j(t,e,s){return t>>4<<8|e&240|s>>4}function R(t,e,s){return t<e?e:t>s?s:t}function T(t){return t*t}function tt(t,e,s){var n=0,r=1e100;let o=t[e],i=o.cnt,c=o.ac,x=o.rc,a=o.gc,l=o.bc;for(var f=o.fw;f!=0;f=t[f].fw){let h=t[f],b=h.cnt,w=i*b/(i+b);if(!(w>=r)){var g=0;s&&(g+=w*T(h.ac-c),g>=r)||(g+=w*T(h.rc-x),!(g>=r)&&(g+=w*T(h.gc-a),!(g>=r)&&(g+=w*T(h.bc-l),!(g>=r)&&(r=g,n=f))))}}o.err=r,o.nn=n}function Q(){return{ac:0,rc:0,gc:0,bc:0,cnt:0,nn:0,fw:0,bk:0,tm:0,mtm:0,err:0}}function ut(t,e){let s=e==="rgb444"?4096:65536,n=new Array(s),r=t.length;if(e==="rgba4444")for(let o=0;o<r;++o){let i=t[o],c=i>>24&255,x=i>>16&255,a=i>>8&255,l=i&255,f=G(l,a,x,c),g=f in n?n[f]:n[f]=Q();g.rc+=l,g.gc+=a,g.bc+=x,g.ac+=c,g.cnt++}else if(e==="rgb444")for(let o=0;o<r;++o){let i=t[o],c=i>>16&255,x=i>>8&255,a=i&255,l=j(a,x,c),f=l in n?n[l]:n[l]=Q();f.rc+=a,f.gc+=x,f.bc+=c,f.cnt++}else for(let o=0;o<r;++o){let i=t[o],c=i>>16&255,x=i>>8&255,a=i&255,l=D(a,x,c),f=l in n?n[l]:n[l]=Q();f.rc+=a,f.gc+=x,f.bc+=c,f.cnt++}return n}function H(t,e,s={}){let{format:n="rgb565",clearAlpha:r=!0,clearAlphaColor:o=0,clearAlphaThreshold:i=0,oneBitAlpha:c=!1}=s;if(!t||!t.buffer)throw new Error("quantize() expected RGBA Uint8Array data");if(!(t instanceof Uint8Array)&&!(t instanceof Uint8ClampedArray))throw new Error("quantize() expected RGBA Uint8Array data");let x=new Uint32Array(t.buffer),a=s.useSqrt!==!1,l=n==="rgba4444",f=ut(x,n),g=f.length,h=g-1,b=new Uint32Array(g+1);for(var w=0,u=0;u<g;++u){let C=f[u];if(C!=null){var _=1/C.cnt;l&&(C.ac*=_),C.rc*=_,C.gc*=_,C.bc*=_,f[w++]=C}}T(e)/w<.022&&(a=!1);for(var u=0;u<w-1;++u)f[u].fw=u+1,f[u+1].bk=u,a&&(f[u].cnt=Math.sqrt(f[u].cnt));a&&(f[u].cnt=Math.sqrt(f[u].cnt));var k,B,p;for(u=0;u<w;++u){tt(f,u,!1);var A=f[u].err;for(B=++b[0];B>1&&(p=B>>1,!(f[k=b[p]].err<=A));B=p)b[B]=k;b[B]=u}var z=w-e;for(u=0;u<z;){for(var d;;){var I=b[1];if(d=f[I],d.tm>=d.mtm&&f[d.nn].mtm<=d.tm)break;d.mtm==h?I=b[1]=b[b[0]--]:(tt(f,I,!1),d.tm=u);var A=f[I].err;for(B=1;(p=B+B)<=b[0]&&(p<b[0]&&f[b[p]].err>f[b[p+1]].err&&p++,!(A<=f[k=b[p]].err));B=p)b[B]=k;b[B]=I}var y=f[d.nn],m=d.cnt,v=y.cnt,_=1/(m+v);l&&(d.ac=_*(m*d.ac+v*y.ac)),d.rc=_*(m*d.rc+v*y.rc),d.gc=_*(m*d.gc+v*y.gc),d.bc=_*(m*d.bc+v*y.bc),d.cnt+=y.cnt,d.mtm=++u,f[y.bk].fw=y.fw,f[y.fw].bk=y.bk,y.mtm=h}let M=[];var V=0;for(u=0;;++V){let L=R(Math.round(f[u].rc),0,255),C=R(Math.round(f[u].gc),0,255),Y=R(Math.round(f[u].bc),0,255),E=255;if(l){if(E=R(Math.round(f[u].ac),0,255),c){let st=typeof c=="number"?c:127;E=E<=st?0:255}r&&E<=i&&(L=C=Y=o,E=0)}let K=l?[L,C,Y,E]:[L,C,Y];if(xt(M,K)||M.push(K),(u=f[u].fw)==0)break}return M}function xt(t,e){for(let s=0;s<t.length;s++){let n=t[s],r=n[0]===e[0]&&n[1]===e[1]&&n[2]===e[2],o=n.length>=4&&e.length>=4?n[3]===e[3]:!0;if(r&&o)return!0}return!1}function U(t,e){var s=0,n;for(n=0;n<t.length;n++){let r=t[n]-e[n];s+=r*r}return s}function P(t,e){return e>1?Math.round(t/e)*e:t}function et(t,{roundRGB:e=5,roundAlpha:s=10,oneBitAlpha:n=null}={}){let r=new Uint32Array(t.buffer);for(let o=0;o<r.length;o++){let i=r[o],c=i>>24&255,x=i>>16&255,a=i>>8&255,l=i&255;if(c=P(c,s),n){let f=typeof n=="number"?n:127;c=c<=f?0:255}l=P(l,e),a=P(a,e),x=P(x,e),r[o]=c<<24|x<<16|a<<8|l<<0}}function nt(t,e,s="rgb565"){if(!t||!t.buffer)throw new Error("quantize() expected RGBA Uint8Array data");if(!(t instanceof Uint8Array)&&!(t instanceof Uint8ClampedArray))throw new Error("quantize() expected RGBA Uint8Array data");if(e.length>256)throw new Error("applyPalette() only works with 256 colors or less");let n=new Uint32Array(t.buffer),r=n.length,o=s==="rgb444"?4096:65536,i=new Uint8Array(r),c=new Array(o),x=s==="rgba4444";if(s==="rgba4444")for(let a=0;a<r;a++){let l=n[a],f=l>>24&255,g=l>>16&255,h=l>>8&255,b=l&255,w=G(b,h,g,f),_=w in c?c[w]:c[w]=gt(b,h,g,f,e);i[a]=_}else{let a=s==="rgb444"?j:D;for(let l=0;l<r;l++){let f=n[l],g=f>>16&255,h=f>>8&255,b=f&255,w=a(b,h,g),_=w in c?c[w]:c[w]=bt(b,h,g,e);i[l]=_}}return i}function gt(t,e,s,n,r){let o=0,i=1e100;for(let c=0;c<r.length;c++){let x=r[c],a=x[3],l=q(a-n);if(l>i)continue;let f=x[0];if(l+=q(f-t),l>i)continue;let g=x[1];if(l+=q(g-e),l>i)continue;let h=x[2];l+=q(h-s),!(l>i)&&(i=l,o=c)}return o}function bt(t,e,s,n){let r=0,o=1e100;for(let i=0;i<n.length;i++){let c=n[i],x=c[0],a=q(x-t);if(a>o)continue;let l=c[1];if(a+=q(l-e),a>o)continue;let f=c[2];a+=q(f-s),!(a>o)&&(o=a,r=i)}return r}function rt(t,e,s=5){if(!t.length||!e.length)return;let n=t.map(i=>i.slice(0,3)),r=s*s,o=t[0].length;for(let i=0;i<e.length;i++){let c=e[i];c.length<o?c=[c[0],c[1],c[2],255]:c.length>o?c=c.slice(0,3):c=c.slice();let x=N(n,c.slice(0,3),U),a=x[0],l=x[1];l>0&&l<=r&&(t[a]=c)}}function q(t){return t*t}function W(t,e,s=U){let n=Infinity,r=-1;for(let o=0;o<t.length;o++){let i=t[o],c=s(e,i);c<n&&(n=c,r=o)}return r}function N(t,e,s=U){let n=Infinity,r=-1;for(let o=0;o<t.length;o++){let i=t[o],c=s(e,i);c<n&&(n=c,r=o)}return[r,n]}function ot(t,e,s=U){return t[W(t,e,s)]}function ct(t={}){let{initialCapacity:e=4096,auto:s=!0}=t,n=F(e),r=5003,o=new Uint8Array(256),i=new Int32Array(r),c=new Int32Array(r),x=!1;return{reset(){n.reset(),x=!1},finish(){n.writeByte(X.trailer)},bytes(){return n.bytes()},bytesView(){return n.bytesView()},get buffer(){return n.buffer},get stream(){return n},writeHeader:a,writeFrame(l,f,g,h={}){let{transparent:b=!1,transparentIndex:w=0,delay:_=0,palette:u=null,repeat:k=0,colorDepth:B=8,dispose:p=-1}=h,A=!1;if(s?x||(A=!0,a(),x=!0):A=Boolean(h.first),f=Math.max(0,Math.floor(f)),g=Math.max(0,Math.floor(g)),A){if(!u)throw new Error("First frame must include a { palette } option");pt(n,f,g,u,B),it(n,u),k>=0&&dt(n,k)}let z=Math.round(_/10);wt(n,p,z,b,w);let d=Boolean(u)&&!A;ht(n,f,g,d?u:null),d&&it(n,u),yt(n,l,f,g,B,o,i,c)}};function a(){ft(n,"GIF89a")}}function wt(t,e,s,n,r){t.writeByte(33),t.writeByte(249),t.writeByte(4),r<0&&(r=0,n=!1);var o,i;n?(o=1,i=2):(o=0,i=0),e>=0&&(i=e&7),i<<=2;let c=0;t.writeByte(0|i|c|o),S(t,s),t.writeByte(r||0),t.writeByte(0)}function pt(t,e,s,n,r=8){let o=1,i=0,c=Z(n.length)-1,x=o<<7|r-1<<4|i<<3|c,a=0,l=0;S(t,e),S(t,s),t.writeBytes([x,a,l])}function dt(t,e){t.writeByte(33),t.writeByte(255),t.writeByte(11),ft(t,"NETSCAPE2.0"),t.writeByte(3),t.writeByte(1),S(t,e),t.writeByte(0)}function it(t,e){let s=1<<Z(e.length);for(let n=0;n<s;n++){let r=[0,0,0];n<e.length&&(r=e[n]),t.writeByte(r[0]),t.writeByte(r[1]),t.writeByte(r[2])}}function ht(t,e,s,n){if(t.writeByte(44),S(t,0),S(t,0),S(t,e),S(t,s),n){let r=0,o=0,i=Z(n.length)-1;t.writeByte(128|r|o|0|i)}else t.writeByte(0)}function yt(t,e,s,n,r=8,o,i,c){$(s,n,e,r,t,o,i,c)}function S(t,e){t.writeByte(e&255),t.writeByte(e>>8&255)}function ft(t,e){for(var s=0;s<e.length;s++)t.writeByte(e.charCodeAt(s))}function Z(t){return Math.max(Math.ceil(Math.log2(t)),1)}var Bt=ct;window.GIFENC = { GIFEncoder: ct, applyPalette: nt, quantize: H };
+})();
 
 // ---------- small helpers ----------
 const $ = s => document.querySelector(s);
@@ -411,6 +426,7 @@ const SPR = {
     grain(b, w, h, r, 0.5);
     const A = tint(M, col); grain(A.getContext('2d'), w, h, r, 0.65);
     x.drawImage(B, 0, 0); x.globalAlpha = 0.93; x.drawImage(A, 0, 0); x.globalAlpha = 1;
+    return { layers: [B, A] };
   }
 };
 
@@ -445,17 +461,33 @@ const VEC = {
       }
       const ord = { leaf: 0, bud: 1, daisy: 2 };
       items.sort((a, b) => ord[a.t] - ord[b.t]);
+      for (const it of items) if (it.t !== 'leaf') {
+        const hsh = hash(it.x * 91.7 + it.y * 37.3 + id * 0.13);
+        it.sw = hsh < 0.4; it.ph = hsh * 40; it.amp = 0.6 + hash(hsh * 777) * 0.6;
+      }
       return { items, ch, dur: 1500 };
     },
-    draw(ctx, D, x, by, S, P, col, age) {
-      const BL = P.blooms, LS = P.leafShades, f = FB.bloom;
-      ctx.save(); ctx.globalAlpha *= age < 1e8 ? eo(age / 450) : 1;
-      ctx.font = fstr(f, S * f.scale); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = P.fol;
-      ctx.fillText(D.ch, x, by); ctx.restore();
+    // mode: 'all' draws everything; 'static' leaves out the flowers in the breeze; 'sway' draws only those, moving
+    draw(ctx, D, x, by, S, P, col, age, pr, mode = 'all', now = 0, k = 1) {
+      const BL = P.blooms, LS = P.leafShades, f = FB.bloom, t = now / 1000;
+      if (mode !== 'sway') {
+        ctx.save(); ctx.globalAlpha *= age < 1e8 ? eo(age / 450) : 1;
+        ctx.font = fstr(f, S * f.scale); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = P.fol;
+        ctx.fillText(D.ch, x, by); ctx.restore();
+      }
       for (const it of D.items) {
+        if ((mode === 'static' && it.sw) || (mode === 'sway' && !it.sw)) continue;
         let s = 1;
         if (age < 1e8) { s = spr((age - it.d) / 1000, 9, 12); if (s <= 0.002) continue; }
-        ctx.save(); ctx.translate(x + it.x * S, by + it.y * S); ctx.rotate(it.rot);
+        let dx = 0, dy = 0, dr = 0, nod = 1;
+        if (mode === 'sway') {
+          // a breeze that rolls across the word in slow gusts; each flower nods and leans on its stem
+          const gx = (x + it.x * S) / S, phase = t * 1.7 - gx * 1.1 + it.ph * 0.35, b = Math.sin(phase);
+          const A = k * it.amp * (0.4 + 0.6 * (0.5 + 0.5 * Math.sin(t * 0.45 - gx * 0.3)));
+          dx = 0.022 * S * A * b; dy = 0.006 * S * A * Math.sin(phase * 2); dr = 0.22 * A * b;
+          nod = 1 - 0.2 * A * (0.5 + 0.5 * Math.sin(phase + 1.3));
+        }
+        ctx.save(); ctx.translate(x + it.x * S + dx, by + it.y * S + dy); ctx.rotate(it.rot + dr);
         if (it.t === 'leaf') {
           const L = it.l * S * s, Wd = L * 0.36, sh = LS[it.c];
           ctx.translate(-L * 0.5, 0); ctx.fillStyle = sh[0]; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(L * 0.45, -Wd, L, 0); ctx.quadraticCurveTo(L * 0.45, Wd, 0, 0); ctx.fill();
@@ -464,7 +496,7 @@ const VEC = {
           ctx.fillStyle = BL[it.c % BL.length]; ctx.beginPath(); ctx.arc(0, 0, it.r * S * s, 0, TAU); ctx.fill();
         } else {
           const r = it.r * S * s, rx = r * 0.47, ry = r * 0.17, ci = it.c % BL.length;
-          ctx.scale(1, it.sq); ctx.fillStyle = BL[ci]; ctx.beginPath();
+          ctx.scale(1, it.sq * nod); ctx.fillStyle = BL[ci]; ctx.beginPath();
           for (let k = 0; k < it.n; k++) {
             const a = k / it.n * TAU, ex = Math.cos(a) * r * 0.5, ey = Math.sin(a) * r * 0.5;
             ctx.moveTo(ex + Math.cos(a) * rx, ey + Math.sin(a) * rx); ctx.ellipse(ex, ey, rx, ry, a, 0, TAU);
@@ -514,15 +546,16 @@ function prep(f, l) {
   if (!D) { D = VEC[f.id].prep(l.ch, l.id); PC.set(k, D); }
   return D;
 }
-function sprite(f, l, P, col, pxS) {
-  const key = f.id + '|' + P.name + '|' + l.ch + '|' + col + '|' + pxS + (f.kind === 'vec' && f.id === 'bloom' || f.seeded ? '|' + l.id : '');
+function sprite(f, l, P, col, pxS, variant = 'all') {
+  const key = f.id + '|' + P.name + '|' + l.ch + '|' + col + '|' + pxS + '|' + variant + (f.kind === 'vec' && f.id === 'bloom' || f.seeded ? '|' + l.id : '');
   let e = SC.get(key);
   if (e) return e;
   const a = adv(f, l.ch), pad = 0.55 * pxS, w = Math.ceil(a * pxS + 2 * pad), by = Math.ceil(pad + 1.05 * pxS), h = Math.ceil(by + 0.42 * pxS + pad), bx = w / 2;
   const c = mk(w, h), x = c.getContext('2d');
-  if (f.kind === 'vec') VEC[f.id].draw(x, prep(f, l), bx, by, pxS, P, col, 1e9, 1);
-  else SPR[f.id](x, l, pxS, P, col, bx, by, w, h);
-  e = { c, bx, by };
+  let res = null;
+  if (f.kind === 'vec') VEC[f.id].draw(x, prep(f, l), bx, by, pxS, P, col, 1e9, 1, variant);
+  else res = SPR[f.id](x, l, pxS, P, col, bx, by, w, h);
+  e = { c, bx, by, layers: res && res.layers };
   SC.set(key, e);
   if (SC.size > 500) SC.delete(SC.keys().next().value);
   return e;
@@ -531,21 +564,125 @@ function colorFor(f, l, P) {
   if (f.cycle) { const c = P[f.cycle]; return c[l.ci % c.length]; }
   return P.ink;
 }
-function drawLetter(ctx, l, x, y, S, f, P, pr, age) {
+function drawLetter(ctx, l, x, y, S, f, P, pr, age, fx, now) {
+  const drift = fx && fx.drift;
   const col = colorFor(f, l, P);
-  if (f.kind === 'vec') { const D = prep(f, l); if (age < D.dur) { VEC[f.id].draw(ctx, D, x, y, S, P, col, age, pr); return; } }
-  const pxS = Math.max(8, Math.round(Math.pow(2, Math.round(Math.log2(S * pr) * 12) / 12))), e = sprite(f, l, P, col, pxS), k = S / pxS;
-  ctx.drawImage(e.c, x - e.bx * k, y - e.by * k, e.c.width * k, e.c.height * k);
+  let D = null;
+  if (f.kind === 'vec') { D = prep(f, l); if (age < D.dur) { VEC[f.id].draw(ctx, D, x, y, S, P, col, age, pr); return; } }
+  const live = f.id === 'bloom' && now != null;                  // live daisies: still letter, flowers in the breeze on top
+  const pxS = Math.max(8, Math.round(Math.pow(2, Math.round(Math.log2(S * pr) * 12) / 12))), e = sprite(f, l, P, col, pxS, live ? 'static' : 'all'), k = S / pxS;
+  if (live) {
+    ctx.drawImage(e.c, x - e.bx * k, y - e.by * k, e.c.width * k, e.c.height * k);
+    VEC.bloom.draw(ctx, D, x, y, S, P, col, 1e9, pr, 'sway', now, eo((age - D.dur) / 800));
+    return;
+  }
+  const X = x - e.bx * k, Y = y - e.by * k, w = e.c.width * k, h = e.c.height * k;
+  if (fx && fx.curl && fx.curl.k > 0 && curlSticker(ctx, e, l, X, Y, k, pxS, fx.curl)) return;
+  if (drift && e.layers) {
+    // risograph: the halftone layer floats slightly out of register with the main ink
+    ctx.drawImage(e.layers[0], X + drift[0] * S, Y + drift[1] * S, w, h);
+    const a = ctx.globalAlpha; ctx.globalAlpha = a * 0.93; ctx.drawImage(e.layers[1], X, Y, w, h); ctx.globalAlpha = a;
+  } else ctx.drawImage(e.c, X, Y, w, h);
+}
+
+// ---------- sticker corner curl ----------
+// cut a corner off along a fold line and lay it back over the sticker as the paper backing, foreshortened as it lifts
+const WORK = {};
+function work(slot, w, h) {
+  let c = WORK[slot];
+  if (!c || c.width < w || c.height < h) c = WORK[slot] = mk(Math.max(w, c ? c.width : 0), Math.max(h, c ? c.height : 0));
+  const x = c.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
+  x.shadowColor = 'transparent'; x.clearRect(0, 0, c.width, c.height);
+  return [c, x];
+}
+const DIAG = [[1, 1], [-1, -1], [1, -1], [-1, 1]].map(([a, b]) => [a / Math.SQRT2, b / Math.SQRT2]);
+// how far the sticker reaches toward u, and the small box around that corner (cached per sprite)
+function cornerInfo(e, u, key, pxS) {
+  e.ext = e.ext || {};
+  if (e.ext[key]) return e.ext[key];
+  const w = e.c.width, h = e.c.height, d = e.c.getContext('2d').getImageData(0, 0, w, h).data;
+  let m = -1e9;
+  for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) if (d[(y * w + x) * 4 + 3] > 128) m = Math.max(m, x * u[0] + y * u[1]);
+  const reach = m - 0.16 * pxS;
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) if (d[(y * w + x) * 4 + 3] > 8 && x * u[0] + y * u[1] >= reach) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+  const pad = 4;
+  return (e.ext[key] = { m, x0: Math.max(0, x0 - pad), y0: Math.max(0, y0 - pad), x1: Math.min(w, x1 + pad), y1: Math.min(h, y1 + pad) });
+}
+function halfPlane(x, u, c, L, keepFar) {           // the side of the fold line p·u = c that holds the corner (or the rest)
+  const s = keepFar ? 1 : -1, bx = u[0] * c, by = u[1] * c, vx = -u[1] * L, vy = u[0] * L;
+  x.beginPath(); x.moveTo(bx + vx, by + vy); x.lineTo(bx - vx, by - vy);
+  x.lineTo(bx - vx + s * u[0] * L, by - vy + s * u[1] * L); x.lineTo(bx + vx + s * u[0] * L, by + vy + s * u[1] * L); x.closePath();
+}
+function curlSticker(ctx, e, l, X, Y, k, pxS, cu) {
+  if (hash(Math.abs(l.id) * 5.31 + 0.7) > 0.68) return false;          // about two thirds of the letters peel
+  const di = Math.floor(hash(Math.abs(l.id) * 2.17 + 0.3) * 4), u = DIAG[di];
+  const w = e.c.width, h = e.c.height, L = (w + h) * 2, ci = cornerInfo(e, u, di, pxS);
+  const breathe = 0.5 + 0.5 * Math.sin(cu.t * 0.95 + cu.ph);
+  const done = cu.k >= 0.999, depth = pxS * cu.k * (0.09 + 0.05 * hash(Math.abs(l.id) * 9.7)), c = ci.m - depth;
+  if (depth < 1 || ci.x1 <= ci.x0) return false;
+  const lift = 0.5 + 0.34 * breathe;                                     // the crease stays put; the flap rises and settles
+  const q = 1 + lift, m11 = 1 - q * u[0] * u[0], m12 = -q * u[0] * u[1], m22 = 1 - q * u[1] * u[1], tx = q * c * u[0], ty = q * c * u[1];
+  // 1. the sticker with its corner cut away: one clipped draw, no copies
+  ctx.save(); ctx.translate(X, Y); ctx.scale(k, k);
+  halfPlane(ctx, u, c, L, false); ctx.clip(); ctx.drawImage(e.c, 0, 0);
+  ctx.restore();
+  // 2. the flap, built only inside the small corner box: the paper back, darker at the crease
+  const bw = Math.ceil(ci.x1 - ci.x0), bh = Math.ceil(ci.y1 - ci.y0);
+  e.flap = e.flap || {};
+  let B, C, fl = done && e.flap[di + '|' + l.id];
+  if (fl) { B = fl[0]; C = fl[1]; } else {
+  let b, cc;
+  if (done) { B = mk(bw, bh); b = B.getContext('2d'); C = mk(bw, bh); cc = C.getContext('2d'); e.flap[di + '|' + l.id] = [B, C]; }
+  else { [B, b] = work('b', bw, bh); [C, cc] = work('c', bw, bh); }
+  b.translate(-ci.x0, -ci.y0);
+  b.save(); halfPlane(b, u, c, L, true); b.clip(); b.drawImage(e.c, 0, 0); b.restore();
+  b.globalCompositeOperation = 'source-in'; b.fillStyle = '#F3F1EC'; b.fillRect(ci.x0, ci.y0, bw, bh);
+  b.globalCompositeOperation = 'source-atop';
+  const gx = u[0] * c, gy = u[1] * c, g = b.createLinearGradient(gx, gy, gx + u[0] * depth, gy + u[1] * depth);
+  g.addColorStop(0, 'rgba(60,50,40,0.30)'); g.addColorStop(0.55, 'rgba(60,50,40,0.06)'); g.addColorStop(1, 'rgba(255,255,255,0.6)');
+  b.fillStyle = g; b.fillRect(ci.x0, ci.y0, bw, bh);
+  cc.drawImage(B, 0, 0); cc.globalCompositeOperation = 'source-in'; cc.fillStyle = '#1a1208'; cc.fillRect(0, 0, bw, bh);
+  }
+  // 3. fold it back across the crease (a reflection, squashed by how far it has lifted), shadow first
+  ctx.save(); ctx.translate(X, Y); ctx.scale(k, k);
+  ctx.save(); ctx.globalAlpha *= 0.18;
+  ctx.transform(m11, m12, m12, m22, tx - u[0] * depth * 0.12, ty - u[1] * depth * 0.12 + depth * 0.1);
+  ctx.drawImage(C, 0, 0, bw, bh, ci.x0, ci.y0, bw, bh); ctx.restore();
+  ctx.transform(m11, m12, m12, m22, tx, ty);
+  ctx.drawImage(B, 0, 0, bw, bh, ci.x0, ci.y0, bw, bh);
+  ctx.restore();
+  return true;
 }
 
 // ---------- motion ----------
-function motion(f, l, age, now, act) {
+// how long each style's entrance takes before its idle motion fades in
+const SETTLE = { bloom: 1500, inflate: 650, gummy: 900, sticker: 500, neon: 700, riso: 650 };
+// a gentle, endless "breathing" per style; each letter is out of step with its neighbours
+function idle(f, l, age, now) {
+  const k = eo((age - SETTLE[f.id]) / 700), o = { sx: 1, sy: 1, rot: 0, dy: 0, al: 1, drift: null, curl: null };
+  if (k <= 0) return o;
+  const t = now / 1000, ph = l.ci * 0.9 + (Math.abs(l.id) % 5) * 0.37;
+  if (f.id === 'inflate') {                                 // (daisies: the letter stays still; its flowers sway in drawLetter)                          // slow breaths, as if refilling with air
+    const b = Math.sin(2.1 * t + ph); o.sx = 1 + 0.024 * k * b; o.sy = 1 + 0.03 * k * b; o.dy = -0.008 * k * b;
+  } else if (f.id === 'gummy') {                            // soft jelly jiggle rolling through the word
+    const q = Math.sin(3.2 * t - l.ci * 0.75); o.sx = 1 + 0.035 * k * q; o.sy = 1 - 0.035 * k * q; o.dy = 0.006 * k * q;
+  } else if (f.id === 'sticker') {                          // a corner peels up and settles (drawn in drawLetter)
+    o.curl = { k, t, ph };
+  } else if (f.id === 'neon') {                             // glow gently pulsing
+    o.al = 1 - k * 0.16 * (0.5 + 0.5 * Math.sin(2.6 * t + ph));
+  } else if (f.id === 'riso') {                             // two inks drifting in and out of register
+    o.drift = [0.016 * k * Math.sin(0.9 * t + ph), 0.011 * k * Math.cos(1.15 * t + ph * 1.3)];
+  }
+  return o;
+}
+function motion(f, l, age, now, act, lk) {
   const t = age / 1000; let sx = 1, sy = 1, rot = 0;
   if (f.pop === 'pop') { sx = sy = 0.5 + 0.5 * spr(t, 9, 15); }
   else if (f.pop === 'wobble') {
     const s = spr(t, 7, 16), w = 0.22 * Math.sin(t * 22) * Math.exp(-t * 4.5);
     sx = s * (1 + w); sy = s * (1 - w);
-    const i = act.indexOf(l), n = act.length - 1, dk = now - lastKey;
+    const i = act.indexOf(l), n = act.length - 1, dk = now - lk;
     if (i >= 0 && dk < 800) { const a = 0.07 * Math.exp(-dk / 200) * Math.exp(-(n - i) * 0.45), q = Math.sin(dk / 1000 * 26 + i); sx *= 1 + a * q; sy *= 1 - a * q; }
   } else if (f.pop === 'slap') {
     sx = sy = 1 + 0.35 * (1 - eo(t / 0.18));
@@ -555,28 +692,37 @@ function motion(f, l, age, now, act) {
 }
 
 // ---------- paint ----------
-function paint(ctx, pr, now, still) {
-  const f = FIL(), P = PAL(), S = still ? St : Sd, light = lum(P.bg) > 0.5;
-  ctx.setTransform(pr, 0, 0, pr, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-  ctx.fillStyle = P.bg; ctx.fillRect(0, 0, W, H);
-  const act = letters.filter(l => !l.dead);
-  for (const l of letters) {
-    if (l.ch === ' ' || l.x == null || (still && l.dead)) continue;
+// draws a set of letters at a moment in time; shared by the live view, PNG and GIF
+function scene(ctx, pr, now, L, S, lk, still, at) {
+  const f = FIL(), P = PAL(), light = lum(P.bg) > 0.5, act = L.filter(l => !l.dead);
+  for (const l of L) {
+    if (l.ch === ' ' || (still && l.dead)) continue;
+    const pos = at(l); if (!pos) continue;
     const age = still ? 1e9 : now - l.birth;
     if (age < 0) continue;
-    const x = still ? l.tx : l.x, y = still ? l.ty : l.y;
-    let sx = 1, sy = 1, rot = 0, al = 1;
-    if (!still) ({ sx, sy, rot } = motion(f, l, age, now, act));
+    const [x, y] = pos;
+    let sx = 1, sy = 1, rot = 0, al = 1, dy = 0, fx = null;
+    if (!still) {
+      ({ sx, sy, rot } = motion(f, l, age, now, act, lk));
+      const id = idle(f, l, age, now);
+      sx *= id.sx; sy *= id.sy; rot += id.rot; dy = id.dy * S; al *= id.al; fx = id;
+    }
     if (f.id === 'sticker') rot += l.tilt;
-    if (l.dead && !still) { const d = eo((now - l.dead) / 220); al = 1 - d; sx *= 1 - 0.4 * d; sy *= 1 - 0.4 * d; }
+    if (l.dead && !still) { const d = eo((now - l.dead) / 220); al *= 1 - d; sx *= 1 - 0.4 * d; sy *= 1 - 0.4 * d; }
     if (f.id === 'neon' && !still && hash(l.id * 13.1 + Math.floor(now / 80)) < 0.005) al *= 0.35;
     ctx.save(); ctx.globalAlpha = al;
     if (f.id === 'riso' && light) ctx.globalCompositeOperation = 'multiply';
     const py = y - 0.35 * S;
-    ctx.translate(x, py); if (rot) ctx.rotate(rot); ctx.scale(sx, sy); ctx.translate(-x, -py);
-    drawLetter(ctx, l, x, y, S, f, P, pr, age);
+    ctx.translate(x, py + dy); if (rot) ctx.rotate(rot); ctx.scale(sx, sy); ctx.translate(-x, -py);
+    drawLetter(ctx, l, x, y, S, f, P, pr, age, fx, still ? null : now);
     ctx.restore();
   }
+}
+function paint(ctx, pr, now, still) {
+  const P = PAL(), S = still ? St : Sd;
+  ctx.setTransform(pr, 0, 0, pr, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = P.bg; ctx.fillRect(0, 0, W, H);
+  scene(ctx, pr, now, letters, S, lastKey, still, l => l.x == null ? null : still ? [l.tx, l.ty] : [l.x, l.y]);
   if (!still) {
     const on = now - lastKey < 500 || Math.floor(now / 530) % 2 === 0;
     if (on) { const w = Math.max(2, cH * 0.04); ctx.fillStyle = P.ui; ctx.fillRect(cx - w / 2, cy - cH / 2, w, cH); }
@@ -644,6 +790,7 @@ function buildDock() {
     sr.appendChild(b);
   });
   $('#save').addEventListener('click', e => { savePNG(); e.currentTarget.blur(); });
+  $('#gif').addEventListener('click', e => { saveGIF(); e.currentTarget.blur(); });
 }
 function drawTiles() {
   const P = PAL();
@@ -686,12 +833,80 @@ function savePNG() {
   const pr = Math.max(2, dpr), c = mk(W * pr, H * pr);
   paint(c.getContext('2d'), pr, performance.now(), true);
   const word = letters.filter(l => !l.dead).map(l => l.ch).join('').trim().replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 24) || 'type';
-  c.toBlob(b => {
-    if (!b) return;
-    const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `${word}-${FIL().id}.png`;
-    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-  }, 'image/png');
+  c.toBlob(b => { if (b) download(b, `letterpop-${word}-${FIL().id}.png`); }, 'image/png');
 }
+
+// GIF: replays the word being typed letter by letter, lets it settle into its idle motion, then loops
+let gifBusy = false;
+async function saveGIF() {
+  if (gifBusy) return;
+  const L0 = letters.filter(l => !l.dead && l.tx != null), vis = L0.filter(l => l.ch !== ' ');
+  if (!vis.length) { flashHint(); return; }
+  gifBusy = true;
+  const btn = $('#gif'), label = btn.querySelector('span'), old = label.textContent;
+  try {
+    const f = FIL(), P = PAL(), S = St, pad = (f.id === 'bloom' ? 0.6 : 0.45) * S;
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    for (const l of vis) { x0 = Math.min(x0, l.tx - l.tw / 2); x1 = Math.max(x1, l.tx + l.tw / 2); y0 = Math.min(y0, l.ty - 1.05 * S); y1 = Math.max(y1, l.ty + 0.35 * S); }
+    x0 -= pad; x1 += pad; y0 -= pad; y1 += pad;
+    const sc = Math.min(800 / (x1 - x0), 800 / (y1 - y0), 3);
+    const gw = Math.round((x1 - x0) * sc / 2) * 2, gh = Math.round((y1 - y0) * sc / 2) * 2;
+    const c = mk(gw, gh), x = c.getContext('2d', { willReadFrequently: true });
+
+    // timeline: type, settle, hold, fade
+    const n = L0.length, step = clamp(1400 / n, 70, 150), start = 300;
+    const V = L0.map((l, k) => Object.assign({}, l, { birth: start + k * step, dead: null }));
+    const lastBirth = start + (n - 1) * step, typed = lastBirth + 350;
+    const hold = lastBirth + SETTLE[f.id] + 2200, T = hold + 400, FPS = 20, N = Math.ceil(T / 1000 * FPS);
+    const at = l => [l.tx, l.ty];
+    const frames = [];
+    for (let i = 0; i < N; i++) {
+      const t = i * 1000 / FPS;
+      x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over';
+      x.fillStyle = P.bg; x.fillRect(0, 0, gw, gh);
+      x.setTransform(sc, 0, 0, sc, -x0 * sc, -y0 * sc);
+      const born = V.filter(l => l.birth <= t), lk = born.length ? born[born.length - 1].birth : -1e9;
+      scene(x, sc, t, V, S, lk, false, at);
+      if (t < typed) {                                       // the typing cursor follows the newest letter
+        const last = born[born.length - 1], cxp = last ? last.tx + last.tw / 2 + 0.06 * S : V[0].tx - V[0].tw / 2, ch = 0.82 * S;
+        if (Math.floor(t / 260) % 2 === 0 || t - lk < 300) { x.fillStyle = P.ui; x.fillRect(cxp - Math.max(2 / sc, S * 0.016), V[0].ty - 0.35 * S - ch / 2, Math.max(4 / sc, S * 0.032), ch); }
+      }
+      if (t > hold) { x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = eo((t - hold) / 400); x.fillStyle = P.bg; x.fillRect(0, 0, gw, gh); }
+      frames.push(x.getImageData(0, 0, gw, gh).data);
+      if (i % 4 === 0) { label.textContent = `${Math.round(i / N * 60)}%`; await new Promise(r => setTimeout(r, 0)); }
+    }
+
+    // one shared palette for every frame keeps colours steady from frame to frame
+    const { GIFEncoder, quantize, applyPalette } = window.GIFENC;
+    const pick = [], every = Math.max(1, Math.floor(N / 14));
+    for (let i = 0; i < N; i += every) pick.push(frames[i]);
+    pick.push(frames[Math.min(N - 1, Math.round(hold / 1000 * FPS) - 1)]);
+    const per = pick[0].length, sample = new Uint8ClampedArray(per * pick.length);
+    pick.forEach((d, k) => sample.set(d, k * per));
+    const palette = quantize(sample, 256, { format: 'rgb565' });
+    const soft = f.id === 'inflate' || f.id === 'gummy' || f.id === 'neon';
+    const B4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+    const gif = GIFEncoder();
+    for (let i = 0; i < N; i++) {
+      const d = frames[i];
+      if (soft) for (let y = 0, p = 0; y < gh; y++) for (let xx = 0; xx < gw; xx++, p += 4) {   // light ordered dither hides banding in gradients
+        const v = (B4[(y & 3) * 4 + (xx & 3)] / 16 - 0.47) * 10;
+        d[p] = d[p] + v; d[p + 1] = d[p + 1] + v; d[p + 2] = d[p + 2] + v;
+      }
+      gif.writeFrame(applyPalette(d, palette, 'rgb565'), gw, gh, { palette, delay: 1000 / FPS, repeat: 0 });
+      if (i % 4 === 0) { label.textContent = `${60 + Math.round(i / N * 40)}%`; await new Promise(r => setTimeout(r, 0)); }
+    }
+    gif.finish();
+    const word = L0.map(l => l.ch).join('').trim().replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 24) || 'type';
+    download(new Blob([gif.bytes()], { type: 'image/gif' }), `letterpop-${word}-${f.id}.gif`);
+  } catch (e) { console.error(e); }
+  label.textContent = old; gifBusy = false;
+}
+function download(b, name) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+function flashHint() { const h = $('#hint'); h.classList.remove('quiet'); h.animate([{ opacity: 1 }, { opacity: 0.6 }], { duration: 900 }); }
 
 // ---------- boot ----------
 function resize() {
