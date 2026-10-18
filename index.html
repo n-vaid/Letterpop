@@ -930,21 +930,17 @@ if (document.fonts) {
     advC.clear(); PC.clear(); SC.clear(); layout(true); drawTiles();
   }).catch(() => {});
 }
-// ---------- visitor number: each browser gets its own number once, then keeps it ----------
+// ---------- visitor number: every page load is a new visit and adds 1 to the total ----------
 (async () => {
-  const el = $('#count'), KEY = 'letterpop-visitor';
-  const show = n => { el.querySelector('b').textContent = `you're visitor #${Number(n).toLocaleString('en-US')}`; el.hidden = false; layout(); };
-  let mine = null;
-  try { mine = localStorage.getItem(KEY); } catch (e) {}
-  if (mine) { show(mine); return; }
+  const el = $('#count');
   if (location.protocol === 'file:') return;            // opened from your computer: no counter to talk to
   try {
     const r = await fetch('/api/visit', { method: 'POST' });
     if (!r.ok) return;
     const { visitor } = await r.json();
     if (!visitor) return;
-    try { localStorage.setItem(KEY, String(visitor)); } catch (e) {}
-    show(visitor);
+    el.querySelector('b').textContent = `you're visitor #${Number(visitor).toLocaleString('en-US')}`;
+    el.hidden = false; layout();
   } catch (e) {}
 })();
 window.__tc = { add, clearAll, setFilter, setPalette, savePNG, get letters() { return letters; } };
